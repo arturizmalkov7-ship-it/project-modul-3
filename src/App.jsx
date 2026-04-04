@@ -100,6 +100,29 @@ function formatMoney(n) {
   }).format(n);
 }
 
+/** V2: компактная дата из строки YYYY-MM-DD → ДД.ММ.ГГГГ */
+function formatShortDate(iso) {
+  if (!iso || typeof iso !== 'string') return '—';
+  const [y, m, d] = iso.split('-');
+  if (!y || !m || !d) return iso;
+  return `${d}.${m}.${y}`;
+}
+
+/** Пустое состояние: заголовок, пояснение, опциональные действия (кнопки/ссылки) */
+function EmptyState({ title, description, children }) {
+  return (
+    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 py-12 px-6 text-center">
+      <p className="text-base font-semibold text-slate-800">{title}</p>
+      {description && (
+        <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">{description}</p>
+      )}
+      {children && (
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">{children}</div>
+      )}
+    </div>
+  );
+}
+
 // -----------------------------------------------------------------------------
 // Каркас: боковая навигация + область страницы
 // -----------------------------------------------------------------------------
@@ -255,6 +278,7 @@ function DashboardPage() {
   const { clients, deals } = useOutletContext();
   const totalAmount = deals.reduce((s, d) => s + d.amount, 0);
   const won = deals.filter((d) => d.stage === 'won').length;
+  const isTotallyEmpty = clients.length === 0 && deals.length === 0;
 
   return (
     <>
@@ -262,25 +286,51 @@ function DashboardPage() {
         title="Дашборд"
         subtitle="Краткая сводка по моковым данным"
       />
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <p className="text-sm text-slate-500">Клиенты</p>
-          <p className="mt-1 text-3xl font-semibold text-slate-900">
-            {clients.length}
-          </p>
-        </Card>
-        <Card>
-          <p className="text-sm text-slate-500">Сделки всего</p>
-          <p className="mt-1 text-3xl font-semibold text-slate-900">
-            {deals.length}
-          </p>
-        </Card>
-        <Card>
-          <p className="text-sm text-slate-500">Выиграно / сумма</p>
-          <p className="mt-1 text-3xl font-semibold text-emerald-700">{won}</p>
-          <p className="text-sm text-slate-600">{formatMoney(totalAmount)}</p>
-        </Card>
-      </div>
+      {isTotallyEmpty ? (
+        <EmptyState
+          title="Пока нет данных"
+          description="Добавьте клиента и сделку — здесь появятся счётчики и суммы."
+        >
+          <Link
+            to="/clients/new"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+          >
+            Новый клиент
+          </Link>
+          <Link
+            to="/deals/new"
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Новая сделка
+          </Link>
+        </EmptyState>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Card>
+            <p className="text-sm text-slate-500">Клиенты</p>
+            <p className="mt-1 text-3xl font-semibold text-slate-900">
+              {clients.length}
+            </p>
+            {clients.length === 0 && (
+              <p className="mt-2 text-xs text-slate-400">Список клиентов пуст</p>
+            )}
+          </Card>
+          <Card>
+            <p className="text-sm text-slate-500">Сделки всего</p>
+            <p className="mt-1 text-3xl font-semibold text-slate-900">
+              {deals.length}
+            </p>
+            {deals.length === 0 && (
+              <p className="mt-2 text-xs text-slate-400">Сделок пока нет</p>
+            )}
+          </Card>
+          <Card>
+            <p className="text-sm text-slate-500">Выиграно / сумма</p>
+            <p className="mt-1 text-3xl font-semibold text-emerald-700">{won}</p>
+            <p className="text-sm text-slate-600">{formatMoney(totalAmount)}</p>
+          </Card>
+        </div>
+      )}
     </>
   );
 }
@@ -289,7 +339,16 @@ function DashboardPage() {
 // Клиенты: список
 // -----------------------------------------------------------------------------
 function ClientsListPage() {
-  const { clients } = useOutletContext();
+  const { clients, setClients, setDeals } = useOutletContext();
+
+  const handleDeleteClient = (clientId, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm('Удалить клиента? Связанные сделки тоже будут удалены.')) return;
+    setClients((list) => list.filter((c) => c.id !== clientId));
+    setDeals((list) => list.filter((d) => d.clientId !== clientId));
+  };
+
   return (
     <>
       <PageTitle
@@ -304,35 +363,59 @@ function ClientsListPage() {
           </Link>
         }
       />
-      <Card className="overflow-x-auto p-0">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
-            <tr>
-              <th className="px-4 py-3 font-medium">Название</th>
-              <th className="px-4 py-3 font-medium">Email</th>
-              <th className="px-4 py-3 font-medium">Телефон</th>
-              <th className="px-4 py-3 font-medium">Компания</th>
-            </tr>
-          </thead>
-          <tbody>
-            {clients.map((c) => (
-              <tr key={c.id} className="border-b border-slate-100 hover:bg-slate-50/80">
-                <td className="px-4 py-3">
-                  <Link
-                    to={`/clients/${c.id}`}
-                    className="font-medium text-emerald-700 hover:underline"
-                  >
-                    {c.name}
-                  </Link>
-                </td>
-                <td className="px-4 py-3 text-slate-600">{c.email}</td>
-                <td className="px-4 py-3 text-slate-600">{c.phone}</td>
-                <td className="px-4 py-3 text-slate-600">{c.company}</td>
+      {clients.length === 0 ? (
+        <EmptyState
+          title="Клиентов пока нет"
+          description="Создайте первую карточку клиента — её можно будет привязать к сделкам."
+        >
+          <Link
+            to="/clients/new"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+          >
+            + Новый клиент
+          </Link>
+        </EmptyState>
+      ) : (
+        <Card className="overflow-x-auto p-0">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+              <tr>
+                <th className="px-4 py-3 font-medium">Название</th>
+                <th className="px-4 py-3 font-medium">Email</th>
+                <th className="px-4 py-3 font-medium">Телефон</th>
+                <th className="px-4 py-3 font-medium">Компания</th>
+                <th className="w-24 px-4 py-3 font-medium" aria-label="Действия" />
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
+            </thead>
+            <tbody>
+              {clients.map((c) => (
+                <tr key={c.id} className="border-b border-slate-100 hover:bg-slate-50/80">
+                  <td className="px-4 py-3">
+                    <Link
+                      to={`/clients/${c.id}`}
+                      className="font-medium text-emerald-700 hover:underline"
+                    >
+                      {c.name}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">{c.email}</td>
+                  <td className="px-4 py-3 text-slate-600">{c.phone}</td>
+                  <td className="px-4 py-3 text-slate-600">{c.company}</td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteClient(c.id, e)}
+                      className="text-sm font-medium text-rose-600 hover:text-rose-800"
+                    >
+                      Удалить
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
     </>
   );
 }
@@ -342,16 +425,40 @@ function ClientsListPage() {
 // -----------------------------------------------------------------------------
 function ClientViewPage() {
   const { id } = useParams();
-  const { clients } = useOutletContext();
+  const navigate = useNavigate();
+  const { clients, setClients, setDeals } = useOutletContext();
   const client = clients.find((c) => c.id === id);
   if (!client) {
-    return <p className="text-slate-500">Клиент не найден.</p>;
+    return (
+      <>
+        <PageTitle title="Клиент" />
+        <EmptyState
+          title="Клиент не найден"
+          description="Запись могла быть удалена или ссылка устарела."
+        >
+          <Link
+            to="/clients"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+          >
+            К списку клиентов
+          </Link>
+        </EmptyState>
+      </>
+    );
   }
+
+  const handleDelete = () => {
+    if (!window.confirm('Удалить клиента? Связанные сделки тоже будут удалены.')) return;
+    setClients((list) => list.filter((c) => c.id !== id));
+    setDeals((list) => list.filter((d) => d.clientId !== id));
+    navigate('/clients');
+  };
+
   return (
     <>
       <PageTitle
         title={client.name}
-        subtitle={`Создан: ${client.createdAt}`}
+        subtitle={formatShortDate(client.createdAt)}
         actions={
           <>
             <Link
@@ -360,12 +467,13 @@ function ClientViewPage() {
             >
               Редактировать
             </Link>
-            <Link
-              to="/clients"
-              className="text-sm text-emerald-700 hover:underline"
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100"
             >
-              ← К списку
-            </Link>
+              Удалить
+            </button>
           </>
         }
       />
@@ -442,7 +550,22 @@ function ClientFormPage() {
   };
 
   if (!isNew && !existing) {
-    return <p className="text-slate-500">Клиент не найден.</p>;
+    return (
+      <>
+        <PageTitle title="Редактирование клиента" />
+        <EmptyState
+          title="Клиент не найден"
+          description="Нельзя редактировать удалённую или несуществующую запись."
+        >
+          <Link
+            to="/clients"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+          >
+            К списку клиентов
+          </Link>
+        </EmptyState>
+      </>
+    );
   }
 
   return (
@@ -503,8 +626,15 @@ function ClientFormPage() {
 // Сделки: переключение «список» / «воронка»
 // -----------------------------------------------------------------------------
 function DealsPage() {
-  const { deals } = useOutletContext();
+  const { deals, setDeals } = useOutletContext();
   const [mode, setMode] = useState('list'); // 'list' | 'funnel'
+
+  const handleDeleteDeal = (dealId, e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    if (!window.confirm('Удалить сделку?')) return;
+    setDeals((list) => list.filter((d) => d.id !== dealId));
+  };
 
   return (
     <>
@@ -547,7 +677,25 @@ function DealsPage() {
         }
       />
 
-      {mode === 'list' ? (
+      {deals.length === 0 ? (
+        <EmptyState
+          title="Сделок пока нет"
+          description="Создайте сделку и привяжите её к клиенту. Без клиентов сначала добавьте контрагента."
+        >
+          <Link
+            to="/deals/new"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+          >
+            + Новая сделка
+          </Link>
+          <Link
+            to="/clients/new"
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Новый клиент
+          </Link>
+        </EmptyState>
+      ) : mode === 'list' ? (
         <Card className="overflow-x-auto p-0">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
@@ -556,6 +704,7 @@ function DealsPage() {
                 <th className="px-4 py-3 font-medium">Клиент</th>
                 <th className="px-4 py-3 font-medium">Сумма</th>
                 <th className="px-4 py-3 font-medium">Этап</th>
+                <th className="w-24 px-4 py-3 font-medium" aria-label="Действия" />
               </tr>
             </thead>
             <tbody>
@@ -583,6 +732,15 @@ function DealsPage() {
                         {st.label}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteDeal(d.id, e)}
+                        className="text-sm font-medium text-rose-600 hover:text-rose-800"
+                      >
+                        Удалить
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
@@ -591,38 +749,52 @@ function DealsPage() {
         </Card>
       ) : (
         <div className="flex gap-3 overflow-x-auto pb-2">
-          {DEAL_STAGES.map((stage) => (
-            <div
-              key={stage.id}
-              className="w-64 shrink-0 rounded-xl border border-slate-200 bg-slate-100/80 p-3"
-            >
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {stage.label}
-              </h3>
-              <ul className="space-y-2">
-                {deals
-                  .filter((d) => d.stage === stage.id)
-                  .map((d) => (
-                    <li key={d.id}>
-                      <Link
-                        to={`/deals/${d.id}`}
-                        className="block rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-sm hover:border-emerald-300"
-                      >
-                        <span className="font-medium text-slate-900">
-                          {d.title}
-                        </span>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {d.clientName}
-                        </p>
-                        <p className="mt-1 text-sm font-semibold text-emerald-700">
-                          {formatMoney(d.amount)}
-                        </p>
-                      </Link>
-                    </li>
-                  ))}
-              </ul>
-            </div>
-          ))}
+          {DEAL_STAGES.map((stage) => {
+            const stageDeals = deals.filter((d) => d.stage === stage.id);
+            return (
+              <div
+                key={stage.id}
+                className="w-64 shrink-0 rounded-xl border border-slate-200 bg-slate-100/80 p-3"
+              >
+                <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {stage.label}
+                </h3>
+                {stageDeals.length === 0 ? (
+                  <p className="rounded-lg border border-dashed border-slate-200 bg-white/60 py-6 text-center text-xs text-slate-400">
+                    Нет сделок
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {stageDeals.map((d) => (
+                      <li key={d.id}>
+                        <div className="relative rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-sm hover:border-emerald-300">
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteDeal(d.id, e)}
+                            className="absolute right-2 top-2 text-xs font-medium text-rose-600 hover:text-rose-800"
+                            aria-label="Удалить сделку"
+                          >
+                            ×
+                          </button>
+                          <Link to={`/deals/${d.id}`} className="block pr-6">
+                            <span className="font-medium text-slate-900">
+                              {d.title}
+                            </span>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {d.clientName}
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-emerald-700">
+                              {formatMoney(d.amount)}
+                            </p>
+                          </Link>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </>
@@ -634,17 +806,40 @@ function DealsPage() {
 // -----------------------------------------------------------------------------
 function DealViewPage() {
   const { id } = useParams();
-  const { deals } = useOutletContext();
+  const navigate = useNavigate();
+  const { deals, setDeals } = useOutletContext();
   const deal = deals.find((d) => d.id === id);
   if (!deal) {
-    return <p className="text-slate-500">Сделка не найдена.</p>;
+    return (
+      <>
+        <PageTitle title="Сделка" />
+        <EmptyState
+          title="Сделка не найдена"
+          description="Запись могла быть удалена или ссылка устарела."
+        >
+          <Link
+            to="/deals"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+          >
+            К списку сделок
+          </Link>
+        </EmptyState>
+      </>
+    );
   }
   const st = stageMeta(deal.stage);
+
+  const handleDelete = () => {
+    if (!window.confirm('Удалить сделку?')) return;
+    setDeals((list) => list.filter((d) => d.id !== id));
+    navigate('/deals');
+  };
+
   return (
     <>
       <PageTitle
         title={deal.title}
-        subtitle={`Обновлено: ${deal.updatedAt}`}
+        subtitle={formatShortDate(deal.updatedAt)}
         actions={
           <>
             <Link
@@ -653,9 +848,13 @@ function DealViewPage() {
             >
               Редактировать
             </Link>
-            <Link to="/deals" className="text-sm text-emerald-700 hover:underline">
-              ← К сделкам
-            </Link>
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100"
+            >
+              Удалить
+            </button>
           </>
         }
       />
@@ -762,7 +961,47 @@ function DealFormPage() {
   };
 
   if (!isNew && !existing) {
-    return <p className="text-slate-500">Сделка не найдена.</p>;
+    return (
+      <>
+        <PageTitle title="Редактирование сделки" />
+        <EmptyState
+          title="Сделка не найдена"
+          description="Нельзя редактировать удалённую или несуществующую запись."
+        >
+          <Link
+            to="/deals"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+          >
+            К списку сделок
+          </Link>
+        </EmptyState>
+      </>
+    );
+  }
+
+  if (isNew && clients.length === 0) {
+    return (
+      <>
+        <PageTitle title="Новая сделка" />
+        <EmptyState
+          title="Нужен хотя бы один клиент"
+          description="Сделка привязывается к клиенту. Сначала добавьте контрагента в разделе «Клиенты»."
+        >
+          <Link
+            to="/clients/new"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+          >
+            + Новый клиент
+          </Link>
+          <Link
+            to="/deals"
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            К сделкам
+          </Link>
+        </EmptyState>
+      </>
+    );
   }
 
   return (
@@ -922,34 +1161,41 @@ function AdminUsersPage() {
         title="Пользователи"
         subtitle="Список для администратора (моковые данные)"
       />
-      <Card className="overflow-x-auto p-0">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
-            <tr>
-              <th className="px-4 py-3 font-medium">Имя</th>
-              <th className="px-4 py-3 font-medium">Email</th>
-              <th className="px-4 py-3 font-medium">Роль</th>
-              <th className="px-4 py-3 font-medium">Статус</th>
-            </tr>
-          </thead>
-          <tbody>
-            {mockUsers.map((u) => (
-              <tr key={u.id} className="border-b border-slate-100">
-                <td className="px-4 py-3 font-medium text-slate-900">{u.name}</td>
-                <td className="px-4 py-3 text-slate-600">{u.email}</td>
-                <td className="px-4 py-3 text-slate-600">{u.role}</td>
-                <td className="px-4 py-3">
-                  {u.active ? (
-                    <span className="text-emerald-600">Активен</span>
-                  ) : (
-                    <span className="text-slate-400">Отключён</span>
-                  )}
-                </td>
+      {mockUsers.length === 0 ? (
+        <EmptyState
+          title="Пользователей нет"
+          description="Когда появятся учётные записи, они отобразятся в этой таблице."
+        />
+      ) : (
+        <Card className="overflow-x-auto p-0">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+              <tr>
+                <th className="px-4 py-3 font-medium">Имя</th>
+                <th className="px-4 py-3 font-medium">Email</th>
+                <th className="px-4 py-3 font-medium">Роль</th>
+                <th className="px-4 py-3 font-medium">Статус</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
+            </thead>
+            <tbody>
+              {mockUsers.map((u) => (
+                <tr key={u.id} className="border-b border-slate-100">
+                  <td className="px-4 py-3 font-medium text-slate-900">{u.name}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.email}</td>
+                  <td className="px-4 py-3 text-slate-600">{u.role}</td>
+                  <td className="px-4 py-3">
+                    {u.active ? (
+                      <span className="text-emerald-600">Активен</span>
+                    ) : (
+                      <span className="text-slate-400">Отключён</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
     </>
   );
 }
