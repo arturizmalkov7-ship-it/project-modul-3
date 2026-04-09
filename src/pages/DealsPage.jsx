@@ -22,7 +22,6 @@ export default function DealsPage() {
     <>
       <PageTitle
         title="Сделки"
-        subtitle="Список или канбан по этапам"
         actions={
           <>
             <div className="flex rounded-lg border border-slate-200 p-0.5 text-sm">

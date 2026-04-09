@@ -42,6 +42,14 @@ export default function ClientFormPage() {
     }
   };
 
+  const handleInvalid = (e) => {
+    e.target.setCustomValidity('не заполнено поле');
+  };
+
+  const handleInput = (e) => {
+    e.target.setCustomValidity('');
+  };
+
   if (!isNew && !existing) {
     return (
       <>
@@ -83,6 +91,8 @@ export default function ClientFormPage() {
                 value={form[field]}
                 onChange={handleChange}
                 required={field === 'name'}
+                onInvalid={field === 'name' ? handleInvalid : undefined}
+                onInput={field === 'name' ? handleInput : undefined}
                 className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
             </div>

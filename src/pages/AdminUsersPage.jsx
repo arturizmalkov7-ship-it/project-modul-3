@@ -51,10 +51,7 @@ export default function AdminUsersPage() {
 
   return (
     <>
-      <PageTitle
-        title="Пользователи"
-        subtitle="Список и управление ролями в Supabase"
-      />
+      <PageTitle title="Пользователи" />
       {loading ? (
         <Card>Загрузка...</Card>
       ) : error ? (

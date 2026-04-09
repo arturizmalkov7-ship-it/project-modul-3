@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Card, PageTitle } from '../components/ui.jsx';
 import { useAuth } from '../auth.jsx';
-import { updateMyProfile } from '../lib/crmApi.js';
 
 export default function SettingsPage() {
-  const { user, profile: me, refreshProfile } = useAuth();
+  const { profile: me, saveProfile, isDemo } = useAuth();
   const [profile, setProfile] = useState(
     me || {
       name: '',
@@ -27,13 +26,11 @@ export default function SettingsPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!user?.id) return;
     setSaving(true);
     setMessage('');
     try {
-      await updateMyProfile(user.id, profile);
-      await refreshProfile();
-      setMessage('Профиль сохранен.');
+      await saveProfile(profile);
+      setMessage(isDemo ? 'Профиль сохранен в demo-режиме.' : 'Профиль сохранен.');
     } catch (err) {
       setMessage(err.message || 'Не удалось сохранить профиль.');
     } finally {
@@ -45,7 +42,11 @@ export default function SettingsPage() {
     <>
       <PageTitle
         title="Настройки профиля"
-        subtitle="Изменения сохраняются в профиле Supabase"
+        subtitle={
+          isDemo
+            ? 'Demo-режим: изменения хранятся локально до выхода.'
+            : 'Изменения сохраняются в профиле Supabase'
+        }
       />
       <Card className="max-w-xl">
         <form onSubmit={handleSubmit} className="space-y-4">

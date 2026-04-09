@@ -19,7 +19,6 @@ export default function ClientsListPage() {
     <>
       <PageTitle
         title="Клиенты"
-        subtitle="Список компаний и контактов"
         actions={
           <Link
             to="/clients/new"

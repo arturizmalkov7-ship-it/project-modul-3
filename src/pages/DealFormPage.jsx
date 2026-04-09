@@ -43,6 +43,14 @@ export default function DealFormPage() {
     }
   };
 
+  const handleInvalid = (e) => {
+    e.target.setCustomValidity('не заполнено поле');
+  };
+
+  const handleInput = (e) => {
+    e.target.setCustomValidity('');
+  };
+
   if (!isNew && !existing) {
     return (
       <>
@@ -106,6 +114,8 @@ export default function DealFormPage() {
               value={form.title}
               onChange={handleChange}
               required
+              onInvalid={handleInvalid}
+              onInput={handleInput}
               className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
           </div>
@@ -118,6 +128,8 @@ export default function DealFormPage() {
               value={form.amount}
               onChange={handleChange}
               required
+              onInvalid={handleInvalid}
+              onInput={handleInput}
               className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
           </div>
@@ -142,6 +154,9 @@ export default function DealFormPage() {
               name="clientId"
               value={form.clientId}
               onChange={handleChange}
+              required
+              onInvalid={handleInvalid}
+              onInput={handleInput}
               className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             >
               {clients.map((c) => (

@@ -12,14 +12,63 @@ import {
   updateDeal,
 } from '../lib/crmApi.js';
 
+const DEMO_CLIENTS_KEY = 'crm_demo_clients';
+const DEMO_DEALS_KEY = 'crm_demo_deals';
+
+function readJsonArray(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function AppShell() {
-  const { logout, user, profile } = useAuth();
+  const { logout, user, profile, isDemo } = useAuth();
   const [clients, setClients] = useState([]);
   const [deals, setDeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (isDemo) {
+      const today = new Date().toISOString().slice(0, 10);
+      const defaultClients = [
+        {
+          id: 'demo-client-1',
+          name: 'ООО Ромашка',
+          email: 'hello@romashka.test',
+          phone: '+7 (900) 111-22-33',
+          company: 'Ромашка',
+          note: 'Демо-клиент для обучения.',
+          createdAt: today,
+        },
+      ];
+      const defaultDeals = [
+        {
+          id: 'demo-deal-1',
+          title: 'Внедрение CRM Lite',
+          amount: 120000,
+          stage: 'proposal',
+          clientId: 'demo-client-1',
+          clientName: 'ООО Ромашка',
+          comment: 'Обсуждаем коммерческое предложение.',
+          ownerId: user?.id || 'demo-user',
+          updatedAt: today,
+        },
+      ];
+      const storedClients = readJsonArray(DEMO_CLIENTS_KEY);
+      const storedDeals = readJsonArray(DEMO_DEALS_KEY);
+      setClients(storedClients ?? defaultClients);
+      setDeals(storedDeals ?? defaultDeals);
+      setError('');
+      setLoading(false);
+      return;
+    }
+
     let mounted = true;
     const load = async () => {
       setError('');
@@ -39,7 +88,17 @@ export default function AppShell() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [isDemo, user?.id]);
+
+  useEffect(() => {
+    if (!isDemo || loading) return;
+    localStorage.setItem(DEMO_CLIENTS_KEY, JSON.stringify(clients));
+  }, [isDemo, loading, clients]);
+
+  useEffect(() => {
+    if (!isDemo || loading) return;
+    localStorage.setItem(DEMO_DEALS_KEY, JSON.stringify(deals));
+  }, [isDemo, loading, deals]);
 
   const handleLogout = async () => {
     await logout();
@@ -47,31 +106,98 @@ export default function AppShell() {
 
   const api = {
     createClient: async (payload) => {
+      if (isDemo) {
+        const created = {
+          id: `demo-client-${crypto.randomUUID()}`,
+          name: payload.name,
+          email: payload.email || '',
+          phone: payload.phone || '',
+          company: payload.company || '',
+          note: payload.note || '',
+          createdAt: new Date().toISOString().slice(0, 10),
+        };
+        setClients((prev) => [created, ...prev]);
+        return created;
+      }
       const created = await createClient(payload, user.id);
       setClients((prev) => [created, ...prev]);
       return created;
     },
     updateClient: async (id, payload) => {
+      if (isDemo) {
+        const updated = {
+          id,
+          name: payload.name,
+          email: payload.email || '',
+          phone: payload.phone || '',
+          company: payload.company || '',
+          note: payload.note || '',
+          createdAt: new Date().toISOString().slice(0, 10),
+        };
+        setClients((prev) => prev.map((c) => (c.id === id ? { ...c, ...updated } : c)));
+        return updated;
+      }
       const updated = await updateClient(id, payload);
       setClients((prev) => prev.map((c) => (c.id === id ? updated : c)));
       return updated;
     },
     deleteClient: async (id) => {
+      if (isDemo) {
+        setClients((prev) => prev.filter((c) => c.id !== id));
+        setDeals((prev) => prev.filter((d) => d.clientId !== id));
+        return;
+      }
       await deleteClient(id);
       setClients((prev) => prev.filter((c) => c.id !== id));
       setDeals((prev) => prev.filter((d) => d.clientId !== id));
     },
     createDeal: async (payload) => {
+      if (isDemo) {
+        const client = clients.find((c) => c.id === payload.clientId);
+        const created = {
+          id: `demo-deal-${crypto.randomUUID()}`,
+          title: payload.title,
+          amount: Number(payload.amount || 0),
+          stage: payload.stage,
+          clientId: payload.clientId,
+          clientName: client?.name || '—',
+          comment: payload.comment || '',
+          ownerId: user?.id || 'demo-user',
+          updatedAt: new Date().toISOString().slice(0, 10),
+        };
+        setDeals((prev) => [created, ...prev]);
+        return created;
+      }
       const created = await createDeal(payload, user.id);
       setDeals((prev) => [created, ...prev]);
       return created;
     },
     updateDeal: async (id, payload) => {
+      if (isDemo) {
+        const client = clients.find((c) => c.id === payload.clientId);
+        const updated = {
+          id,
+          title: payload.title,
+          amount: Number(payload.amount || 0),
+          stage: payload.stage,
+          clientId: payload.clientId,
+          clientName: client?.name || '—',
+          comment: payload.comment || '',
+          ownerId: user?.id || 'demo-user',
+          updatedAt: new Date().toISOString().slice(0, 10),
+        };
+        setDeals((prev) => prev.map((d) => (d.id === id ? { ...d, ...updated } : d)));
+        return updated;
+      }
       const updated = await updateDeal(id, payload);
       setDeals((prev) => prev.map((d) => (d.id === id ? updated : d)));
       return updated;
     },
     deleteDeal: async (id) => {
+      if (isDemo) {
+        setDeals((prev) => prev.filter((d) => d.id !== id));
+        return;
+      }
       await deleteDeal(id);
       setDeals((prev) => prev.filter((d) => d.id !== id));
     },
@@ -98,9 +224,6 @@ export default function AppShell() {
           </NavLink>
           <NavLink to="/deals" className={navClass}>
             Сделки
-          </NavLink>
-          <NavLink to="/settings" className={navClass}>
-            Профиль
           </NavLink>
           {profile?.role === 'admin' && (
             <NavLink to="/admin/users" className={navClass}>
@@ -130,9 +253,6 @@ export default function AppShell() {
             </Link>
             <Link to="/deals" className="text-slate-600">
               Сделки
-            </Link>
-            <Link to="/settings" className="text-slate-600">
-              Профиль
             </Link>
             {profile?.role === 'admin' && (
               <Link to="/admin/users" className="text-slate-600">

@@ -9,7 +9,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <PageTitle title="Дашборд" subtitle="Краткая сводка по данным CRM" />
+      <PageTitle title="Дашборд" />
       {isTotallyEmpty ? (
         <EmptyState
           title="Пока нет данных"
