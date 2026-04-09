@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { AuthProvider, RequireAuth } from './auth.jsx';
+import { AuthProvider, RequireAuth, RequireRole } from './auth.jsx';
 import AppShell from './layout/AppShell.jsx';
 import AdminUsersPage from './pages/AdminUsersPage.jsx';
 import ClientFormPage from './pages/ClientFormPage.jsx';
@@ -30,7 +30,9 @@ export default function App() {
             <Route path="/deals/:id" element={<DealViewPage />} />
             <Route path="/deals/:id/edit" element={<DealFormPage />} />
             <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/admin/users" element={<AdminUsersPage />} />
+            <Route element={<RequireRole allowedRoles={['admin']} />}>
+              <Route path="/admin/users" element={<AdminUsersPage />} />
+            </Route>
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

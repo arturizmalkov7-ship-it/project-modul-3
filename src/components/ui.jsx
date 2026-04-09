@@ -1,4 +1,4 @@
-import { DEAL_STAGES } from '../mockData.js';
+import { DEAL_STAGES } from '../constants/dealStages.js';
 
 export function Card({ children, className = '' }) {
   return (

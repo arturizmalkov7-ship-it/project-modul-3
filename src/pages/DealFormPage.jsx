@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom';
-import { DEAL_STAGES } from '../mockData.js';
+import { DEAL_STAGES } from '../constants/dealStages.js';
 import { Card, EmptyState, PageTitle } from '../components/ui.jsx';
 
 export default function DealFormPage() {
@@ -8,7 +8,7 @@ export default function DealFormPage() {
   const location = useLocation();
   const isNew = location.pathname === '/deals/new';
   const navigate = useNavigate();
-  const { clients, deals, setDeals } = useOutletContext();
+  const { clients, deals, api } = useOutletContext();
   const existing = !isNew ? deals.find((d) => d.id === id) : null;
 
   const [form, setForm] = useState({
@@ -24,46 +24,22 @@ export default function DealFormPage() {
     setForm((f) => ({ ...f, [name]: name === 'amount' ? value : value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const amount = Number(form.amount) || 0;
-    const client = clients.find((c) => c.id === form.clientId);
-    const clientName = client?.name || '—';
-
     if (isNew) {
-      const newId = `d${Date.now()}`;
-      setDeals((list) => [
-        ...list,
-        {
-          id: newId,
-          title: form.title,
-          amount,
-          stage: form.stage,
-          clientId: form.clientId,
-          clientName,
-          comment: form.comment,
-          updatedAt: new Date().toISOString().slice(0, 10),
-        },
-      ]);
-      navigate(`/deals/${newId}`);
+      try {
+        const created = await api.createDeal(form);
+        navigate(`/deals/${created.id}`);
+      } catch (err) {
+        alert(err.message || 'Не удалось создать сделку.');
+      }
     } else if (existing) {
-      setDeals((list) =>
-        list.map((d) =>
-          d.id === id
-            ? {
-                ...d,
-                title: form.title,
-                amount,
-                stage: form.stage,
-                clientId: form.clientId,
-                clientName,
-                comment: form.comment,
-                updatedAt: new Date().toISOString().slice(0, 10),
-              }
-            : d
-        )
-      );
-      navigate(`/deals/${id}`);
+      try {
+        await api.updateDeal(id, form);
+        navigate(`/deals/${id}`);
+      } catch (err) {
+        alert(err.message || 'Не удалось обновить сделку.');
+      }
     }
   };
 

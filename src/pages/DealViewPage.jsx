@@ -4,7 +4,7 @@ import { Card, EmptyState, PageTitle, formatMoney, formatShortDate, stageMeta } 
 export default function DealViewPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { deals, setDeals } = useOutletContext();
+  const { deals, api } = useOutletContext();
   const deal = deals.find((d) => d.id === id);
 
   if (!deal) {
@@ -27,10 +27,14 @@ export default function DealViewPage() {
   }
 
   const st = stageMeta(deal.stage);
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!window.confirm('Удалить сделку?')) return;
-    setDeals((list) => list.filter((d) => d.id !== id));
-    navigate('/deals');
+    try {
+      await api.deleteDeal(id);
+      navigate('/deals');
+    } catch (err) {
+      alert(err.message || 'Не удалось удалить сделку.');
+    }
   };
 
   return (

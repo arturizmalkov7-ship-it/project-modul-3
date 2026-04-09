@@ -1,25 +1,51 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, PageTitle } from '../components/ui.jsx';
-import { mockProfile } from '../mockData.js';
+import { useAuth } from '../auth.jsx';
+import { updateMyProfile } from '../lib/crmApi.js';
 
 export default function SettingsPage() {
-  const [profile, setProfile] = useState(mockProfile);
+  const { user, profile: me, refreshProfile } = useAuth();
+  const [profile, setProfile] = useState(
+    me || {
+      name: '',
+      email: '',
+      phone: '',
+      position: '',
+    }
+  );
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    if (me) setProfile(me);
+  }, [me]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setProfile((p) => ({ ...p, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    alert('В демо данные не отправляются. Подключите API для сохранения.');
+    if (!user?.id) return;
+    setSaving(true);
+    setMessage('');
+    try {
+      await updateMyProfile(user.id, profile);
+      await refreshProfile();
+      setMessage('Профиль сохранен.');
+    } catch (err) {
+      setMessage(err.message || 'Не удалось сохранить профиль.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <>
       <PageTitle
         title="Настройки профиля"
-        subtitle="Редактирование отображается только в браузере до перезагрузки"
+        subtitle="Изменения сохраняются в профиле Supabase"
       />
       <Card className="max-w-xl">
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -38,10 +64,12 @@ export default function SettingsPage() {
           ))}
           <button
             type="submit"
+            disabled={saving}
             className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
           >
-            Сохранить (демо)
+            {saving ? 'Сохраняем...' : 'Сохранить'}
           </button>
+          {message && <p className="text-sm text-slate-600">{message}</p>}
         </form>
       </Card>
     </>

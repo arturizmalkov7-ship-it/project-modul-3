@@ -1,17 +1,21 @@
 import { useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
-import { DEAL_STAGES } from '../mockData.js';
+import { DEAL_STAGES } from '../constants/dealStages.js';
 import { Card, EmptyState, PageTitle, formatMoney, stageMeta } from '../components/ui.jsx';
 
 export default function DealsPage() {
-  const { deals, setDeals } = useOutletContext();
+  const { deals, api } = useOutletContext();
   const [mode, setMode] = useState('list');
 
-  const handleDeleteDeal = (dealId, e) => {
+  const handleDeleteDeal = async (dealId, e) => {
     e?.preventDefault?.();
     e?.stopPropagation?.();
     if (!window.confirm('Удалить сделку?')) return;
-    setDeals((list) => list.filter((d) => d.id !== dealId));
+    try {
+      await api.deleteDeal(dealId);
+    } catch (err) {
+      alert(err.message || 'Не удалось удалить сделку.');
+    }
   };
 
   return (

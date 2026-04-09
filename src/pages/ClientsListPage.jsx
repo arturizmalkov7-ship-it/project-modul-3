@@ -2,14 +2,17 @@ import { Link, useOutletContext } from 'react-router-dom';
 import { Card, EmptyState, PageTitle } from '../components/ui.jsx';
 
 export default function ClientsListPage() {
-  const { clients, setClients, setDeals } = useOutletContext();
+  const { clients, api } = useOutletContext();
 
-  const handleDeleteClient = (clientId, e) => {
+  const handleDeleteClient = async (clientId, e) => {
     e.preventDefault();
     e.stopPropagation();
     if (!window.confirm('Удалить клиента? Связанные сделки тоже будут удалены.')) return;
-    setClients((list) => list.filter((c) => c.id !== clientId));
-    setDeals((list) => list.filter((d) => d.clientId !== clientId));
+    try {
+      await api.deleteClient(clientId);
+    } catch (err) {
+      alert(err.message || 'Не удалось удалить клиента.');
+    }
   };
 
   return (

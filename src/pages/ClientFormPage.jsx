@@ -7,7 +7,7 @@ export default function ClientFormPage() {
   const location = useLocation();
   const isNew = location.pathname === '/clients/new';
   const navigate = useNavigate();
-  const { clients, setClients } = useOutletContext();
+  const { clients, api } = useOutletContext();
   const existing = !isNew ? clients.find((c) => c.id === id) : null;
 
   const [form, setForm] = useState({
@@ -23,22 +23,22 @@ export default function ClientFormPage() {
     setForm((f) => ({ ...f, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (isNew) {
-      const newId = `c${Date.now()}`;
-      setClients((list) => [
-        ...list,
-        {
-          ...form,
-          id: newId,
-          createdAt: new Date().toISOString().slice(0, 10),
-        },
-      ]);
-      navigate(`/clients/${newId}`);
+      try {
+        const created = await api.createClient(form);
+        navigate(`/clients/${created.id}`);
+      } catch (err) {
+        alert(err.message || 'Не удалось создать клиента.');
+      }
     } else if (existing) {
-      setClients((list) => list.map((c) => (c.id === id ? { ...c, ...form } : c)));
-      navigate(`/clients/${id}`);
+      try {
+        await api.updateClient(id, form);
+        navigate(`/clients/${id}`);
+      } catch (err) {
+        alert(err.message || 'Не удалось обновить клиента.');
+      }
     }
   };
 

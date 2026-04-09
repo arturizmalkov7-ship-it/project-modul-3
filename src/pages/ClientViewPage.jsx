@@ -4,7 +4,7 @@ import { Card, EmptyState, PageTitle, formatShortDate } from '../components/ui.j
 export default function ClientViewPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { clients, setClients, setDeals } = useOutletContext();
+  const { clients, api } = useOutletContext();
   const client = clients.find((c) => c.id === id);
 
   if (!client) {
@@ -26,11 +26,14 @@ export default function ClientViewPage() {
     );
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!window.confirm('Удалить клиента? Связанные сделки тоже будут удалены.')) return;
-    setClients((list) => list.filter((c) => c.id !== id));
-    setDeals((list) => list.filter((d) => d.clientId !== id));
-    navigate('/clients');
+    try {
+      await api.deleteClient(id);
+      navigate('/clients');
+    } catch (err) {
+      alert(err.message || 'Не удалось удалить клиента.');
+    }
   };
 
   return (
